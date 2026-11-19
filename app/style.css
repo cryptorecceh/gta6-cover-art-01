@@ -26,6 +26,8 @@ button {
 }
 button:hover { border-color: #ff2e88; }
 button.active { background: #ff2e88; border-color: #ff2e88; color: #fff; }
+button#shuffleBtn { background: #3a1c5e; border-color: #ffd319; color: #ffd319; }
+button#shuffleBtn:hover { background: #4a2d73; }
 .check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
 .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-width: 0; }
 .panel-grid > * { min-width: 0; }
@@ -33,6 +35,8 @@ button.active { background: #ff2e88; border-color: #ff2e88; color: #fff; }
 .export-row { display: flex; flex-direction: column; gap: 8px; }
 .export-row button { background: #ffd319; color: #1a0b2e; border-color: #ffd319; }
 .export-row button:hover { background: #ffe45c; }
+.export-row button#exportAll { background: #ff2e88; border-color: #ff2e88; color: #fff; }
+.export-row button#exportAll:hover { background: #ff4d9d; }
 #status { margin: 0; min-height: 20px; color: #ffd319; font-weight: 600; }
 .fine { margin: 0; font-size: 12px; color: #8f7cb5; }
 .preview { flex: 1; display: flex; justify-content: center; min-width: 0; }

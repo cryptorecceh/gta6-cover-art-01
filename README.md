@@ -12,11 +12,11 @@ Turn any photo + caption into GTA 6-style multi-panel cover art and export it as
 ## What it does
 
 - **Any photo:** file picker (up to 4 photos), drag & drop onto the preview, or the two bundled sample photos. Photos are read on your machine only — nothing is uploaded.
-- **Multi-panel layouts:** Solo (full-bleed), Duo (2 vertical panels), Trio (hero + 2 stacked), Quad (2x2 grid). Each panel can show a different photo.
-- **Crop & position per panel:** drag on the preview to pan, zoom slider, Fill / Fit, reset.
+- **Multi-panel layouts:** Solo (full-bleed), Duo (2 vertical panels), Trio (hero + 2 stacked), Quad (2x2 grid). Each panel can show a different photo, chosen per panel.
+- **Crop & position per panel:** drag on the preview to pan (click selects the panel), zoom slider, Fill / Fit, reset.
 - **Caption:** bold condensed uppercase title with outline + neon glow, plus a tagline strip. Editable live.
-- **Grades:** Vice Sunset (magenta-orange-teal sky, sun disc, palm silhouettes drawn in canvas), Neon Night, Pastel Vice. Vignette, grain and scanlines optional.
-- **Export PNG:** 1080x1080, 1080x1350, 1920x1080 — one button per size.
+- **Grades:** Vice Sunset, Neon Night, Pastel Vice, and Midnight Drive (new) — gradient skies, a striped retro sun and palm silhouettes drawn in canvas. Vignette, grain and scanlines optional. **Shuffle look** randomises layout + grade in one click.
+- **Export PNG:** 1080x1080, 1080x1350, 1920x1080 — one button per size, or **Export all three sizes** at once.
 
 All art is drawn in code (CSS/canvas gradients, sun, palms, lettering). No Rockstar logo, official artwork or font is used anywhere.
 
@@ -31,7 +31,11 @@ Static files only — no build step, no network, no CDN. Open `app/index.html` f
 
 ## Screenshot scenes
 
-`shots.json` lists the deterministic scenes (`?shot=editor` for the editor with a sample photo loaded, `?shot=cover` for a cover alone, with `photo`, `caption`, `layout`, `grade` and `size` params).
+`shots.json` lists the deterministic scenes (`?shot=editor` for the editor with sample photos loaded, `?shot=cover` for a cover alone, with `photo`, `caption`, `layout`, `grade` and `size` params).
+
+## How it is handed in
+
+`main.ts` (Node 22, stdlib only) copies `app/` + `screenshots/` to `MAKEFUN_OUTPUT_DIR` (or `/output`) and writes `dossier.json` with the vendored `vendor/makefun-app.ts`. `TEST-REPORT.md` records the full test evidence for this round.
 
 ## License
 

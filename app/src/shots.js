@@ -1,5 +1,5 @@
-// Fixed scenes for screenshots: ?shot=editor shows the editor with a sample
-// photo loaded; ?shot=cover shows the exported cover alone, full frame.
+// Fixed scenes for screenshots: ?shot=editor shows the editor with sample
+// photos loaded; ?shot=cover shows the exported cover alone, full frame.
 // Params: photo (sample name), photo2 (second sample), caption (title),
 // tagline, layout, grade, size. window.__shotReady is set once painted.
 import { SIZES } from './cover.js';

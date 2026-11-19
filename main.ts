@@ -1,4 +1,4 @@
-// Vice City Cover Studio — make.fun gta6-cover-art-01 entry program.
+// Vice City Cover Studio — make.fun gta6-cover-art-01 entry program (round 2).
 // Node 22, standard library only. It hands the entry in: copy this repo's
 // app/ and screenshots/ into the output directory (MAKEFUN_OUTPUT_DIR outside
 // the grader, /output inside it) and write /output/dossier.json with the

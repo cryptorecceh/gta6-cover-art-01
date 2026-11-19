@@ -1,4 +1,4 @@
-// Vice City Cover Studio — editor wiring.
+// Vice City Cover Studio — editor wiring (round 2).
 // Pick photos (file picker, drag-drop or the bundled samples), choose a
 // multi-panel layout and a colour grade, crop and position each panel by
 // dragging on the preview, edit the caption live, export a PNG. Photos are
@@ -92,6 +92,21 @@ export async function loadSample(name) {
   return true;
 }
 
+/** Picks a random layout + grade (and re-deals photos across panels). */
+export function shuffleLook() {
+  const layoutKeys = Object.keys(LAYOUTS);
+  const gradeKeys = Object.keys(GRADES);
+  state.layout = layoutKeys[Math.floor(Math.random() * layoutKeys.length)];
+  state.grade = gradeKeys[Math.floor(Math.random() * gradeKeys.length)];
+  if (state.photos.length > 1) {
+    state.panelPhoto = state.panelPhoto.map(() => Math.floor(Math.random() * state.photos.length));
+  }
+  document.querySelectorAll('[data-layout]').forEach((b) => b.classList.toggle('active', b.dataset.layout === state.layout));
+  document.querySelectorAll('[data-grade]').forEach((b) => b.classList.toggle('active', b.dataset.grade === state.grade));
+  redraw();
+  setStatus(`Shuffled: ${LAYOUTS[state.layout].label} layout, ${GRADES[state.grade].label} grade.`);
+}
+
 // ---- controls ----
 const photoInput = document.getElementById('photo');
 photoInput.addEventListener('change', async (e) => {
@@ -143,6 +158,7 @@ document.getElementById('resetPan').addEventListener('click', () => {
   zoomLabel.textContent = '1.00x';
   redraw();
 });
+document.getElementById('shuffleBtn').addEventListener('click', () => shuffleLook());
 document.getElementById('vignette').addEventListener('change', (e) => { state.vignette = e.target.checked; redraw(); });
 document.getElementById('grain').addEventListener('change', (e) => { state.grain = e.target.checked; redraw(); });
 document.getElementById('scanlines').addEventListener('change', (e) => { state.scanlines = e.target.checked; redraw(); });
@@ -190,7 +206,7 @@ panelSelects.forEach((sel) => {
   });
 });
 
-// drag on the preview to pan the panel under the pointer
+// drag on the preview to pan the panel under the pointer (and select it)
 let dragging = null;
 function panelAt(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
@@ -208,6 +224,7 @@ canvas.addEventListener('pointerdown', (e) => {
   selectedPanel = hit.index;
   dragging = { x: e.clientX, y: e.clientY, ox: state.panelOX[selectedPanel], oy: state.panelOY[selectedPanel] };
   canvas.setPointerCapture(e.pointerId);
+  syncPanelControls();
 });
 canvas.addEventListener('pointermove', (e) => {
   if (!dragging) return;
@@ -255,6 +272,14 @@ export function exportPNG(sizeId) {
   });
 }
 
+export async function exportAllSizes() {
+  for (const size of SIZES) {
+    await exportPNG(size.id);
+    await new Promise((r) => setTimeout(r, 350));
+  }
+  setStatus('Saved all three sizes: 1080x1080, 1080x1350, 1920x1080.');
+}
+
 export function exportBytes(sizeId) {
   return new Promise((resolve) => {
     renderExport(sizeId).toBlob((blob) => {
@@ -269,9 +294,10 @@ export function exportBytes(sizeId) {
 document.querySelectorAll('[data-export]').forEach((btn) => {
   btn.addEventListener('click', () => exportPNG(btn.dataset.export));
 });
+document.getElementById('exportAll').addEventListener('click', () => exportAllSizes());
 
 // test hook: lets automated checks drive the app without a mouse
-window.__vc = { state, loadSample, addPhotoFile, exportBytes, exportPNG, redraw, currentSize };
+window.__vc = { state, loadSample, addPhotoFile, exportBytes, exportPNG, exportAllSizes, shuffleLook, redraw, currentSize };
 
 // ---- shot scenes ----
 const query = new URLSearchParams(location.search);

@@ -45,7 +45,7 @@
         <button id="fitBtn" type="button">Fit</button>
         <button id="resetPan" type="button">Reset pan / zoom</button>
       </div>
-      <p class="hint">Drag on the preview to pan the panel under your pointer.</p>
+      <p class="hint">Drag on the preview to pan the panel under your pointer. Click a panel to select it.</p>
     </fieldset>
 
     <label class="field">Title
@@ -61,6 +61,10 @@
         <button type="button" data-grade="sunset" class="active">Vice Sunset</button>
         <button type="button" data-grade="neon">Neon Night</button>
         <button type="button" data-grade="pastel">Pastel Vice</button>
+        <button type="button" data-grade="midnight">Midnight Drive</button>
+      </div>
+      <div class="row">
+        <button id="shuffleBtn" type="button">Shuffle look</button>
       </div>
       <label class="check"><input id="vignette" type="checkbox" checked> Vignette</label>
       <label class="check"><input id="grain" type="checkbox"> Grain</label>
@@ -80,6 +84,7 @@
       <button id="exportSquare" type="button" data-export="1080x1080">Export PNG 1080 x 1080</button>
       <button id="exportPortrait" type="button" data-export="1080x1350">Export PNG 1080 x 1350</button>
       <button id="exportWide" type="button" data-export="1920x1080">Export PNG 1920 x 1080</button>
+      <button id="exportAll" type="button">Export all three sizes</button>
     </div>
     <p id="status" role="status">Load a photo to start — or try a sample.</p>
     <p class="fine">Original art drawn in code. No Rockstar logo, artwork or font.</p>
