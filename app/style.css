@@ -1,58 +1,175 @@
-/* Vice City Cover Studio — neon dusk editor theme. System fonts only. */
+/* Vice City Cover Studio — neon dusk editor theme, round 2b.
+   System fonts only; all colour comes from the grade palettes in
+   src/cover.js, this file only dresses the editor chrome. */
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; background: #12081f; color: #f5efff; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-.app { display: flex; gap: 28px; align-items: flex-start; justify-content: center; padding: 22px; max-width: 1500px; margin: 0 auto; }
-.controls { display: flex; flex-direction: column; gap: 14px; width: 340px; flex: none; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: #12081f;
+  color: #f5efff;
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 22px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+/* ---- controls column ---- */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 340px;
+  flex: none;
+}
+
 .controls h1 {
-  margin: 0; font-size: 30px; line-height: 1.05; letter-spacing: 0.5px;
-  text-transform: uppercase; font-weight: 900; color: #fff;
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.05;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 900;
+  color: #fff;
   text-shadow: 0 0 18px #ff2e88, 0 2px 0 #12081f;
 }
+
 .tag { margin: 0; color: #d9c8f5; }
-.field { display: flex; flex-direction: column; gap: 6px; font-weight: 700; }
 .hint { font-weight: 400; color: #b9a8d8; font-size: 13px; margin: 0; }
+.fine { margin: 0; font-size: 12px; color: #8f7cb5; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+}
+
 input[type=text], select {
-  font: inherit; padding: 9px 10px; border: 1px solid #6b4fa3; border-radius: 8px;
-  background: #1e1032; color: #fff; width: 100%; min-width: 0;
+  font: inherit;
+  padding: 9px 10px;
+  border: 1px solid #6b4fa3;
+  border-radius: 8px;
+  background: #1e1032;
+  color: #fff;
+  width: 100%;
+  min-width: 0;
 }
 input[type=file] { font: inherit; }
 input[type=range] { width: 100%; accent-color: #ff2e88; }
-fieldset { border: 1px solid #4a2d73; border-radius: 10px; padding: 12px; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-legend { font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 13px; color: #ffd319; padding: 0 6px; }
+
+fieldset {
+  border: 1px solid #4a2d73;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+legend {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 13px;
+  color: #ffd319;
+  padding: 0 6px;
+}
+
 .row { display: flex; flex-wrap: wrap; gap: 8px; }
+
 button {
-  font: inherit; font-weight: 700; padding: 9px 12px; border: 1px solid #6b4fa3;
-  border-radius: 8px; background: #241640; color: #fff; cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 9px 12px;
+  border: 1px solid #6b4fa3;
+  border-radius: 8px;
+  background: #241640;
+  color: #fff;
+  cursor: pointer;
 }
 button:hover { border-color: #ff2e88; }
 button.active { background: #ff2e88; border-color: #ff2e88; color: #fff; }
+button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid #ffd319;
+  outline-offset: 2px;
+}
+
 button#shuffleBtn { background: #3a1c5e; border-color: #ffd319; color: #ffd319; }
 button#shuffleBtn:hover { background: #4a2d73; }
+
 .check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
-.panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-width: 0; }
-.panel-grid > * { min-width: 0; }
-.panel-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; }
+
+/* ---- per-panel photo + filter cells ---- */
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  min-width: 0;
+}
+
+.panel-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #4a2d73;
+  border-radius: 8px;
+  background: #1a0e2c;
+}
+
+.panel-cell label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.panel-cell select { font-size: 13px; padding: 7px 8px; }
+
+/* ---- export ---- */
 .export-row { display: flex; flex-direction: column; gap: 8px; }
 .export-row button { background: #ffd319; color: #1a0b2e; border-color: #ffd319; }
 .export-row button:hover { background: #ffe45c; }
 .export-row button#exportAll { background: #ff2e88; border-color: #ff2e88; color: #fff; }
 .export-row button#exportAll:hover { background: #ff4d9d; }
+
 #status { margin: 0; min-height: 20px; color: #ffd319; font-weight: 600; }
-.fine { margin: 0; font-size: 12px; color: #8f7cb5; }
+
+/* ---- preview ---- */
 .preview { flex: 1; display: flex; justify-content: center; min-width: 0; }
+
 canvas {
-  width: min(72vh, 100%); height: auto; aspect-ratio: auto;
+  width: min(72vh, 100%);
+  height: auto;
+  aspect-ratio: auto;
   box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55), 0 0 0 3px #fff;
-  background: #2b1055; touch-action: none; cursor: grab;
+  background: #2b1055;
+  touch-action: none;
+  cursor: grab;
 }
 canvas:active { cursor: grabbing; }
+
+/* ---- screenshot scenes (no editor chrome) ---- */
 body.shot-cover { background: #000; }
 body.shot-cover .controls { display: none; }
 body.shot-cover .app { padding: 0; max-width: none; }
 body.shot-cover .preview { display: contents; }
 body.shot-cover canvas { width: 100vw; height: 100vh; object-fit: contain; box-shadow: none; }
+
 @media (max-width: 900px) {
   .app { flex-direction: column; align-items: stretch; }
   .controls { width: 100%; }
+  .panel-grid { grid-template-columns: 1fr 1fr; }
   canvas { width: 100%; }
 }

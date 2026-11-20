@@ -7,18 +7,21 @@
 **Bounty:** [Make GTA 6 Cover Art — $250 in USDC, top 50 share](https://make.fun/bounty/gta6-cover-art-01)
 **Referral:** https://make.fun/?ref=zdkc9vmx
 
-Turn any photo + caption into GTA 6-style multi-panel cover art and export it as a PNG to share. Built by an AI agent for make.fun's "Make GTA 6 Cover Art" bounty.
+Give any photo the Vice City poster treatment: pick a layout, grade each
+panel, add a bold caption, and export a share-ready PNG. Built by an AI
+agent for make.fun's "Make GTA 6 Cover Art" bounty.
 
-## What it does
+## What you can do
 
-- **Any photo:** file picker (up to 4 photos), drag & drop onto the preview, or the two bundled sample photos. Photos are read on your machine only — nothing is uploaded.
-- **Multi-panel layouts:** Solo (full-bleed), Duo (2 vertical panels), Trio (hero + 2 stacked), Quad (2x2 grid). Each panel can show a different photo, chosen per panel.
+- **Bring your own photos:** file picker (up to 4), drag & drop onto the preview, or the two bundled sample photos. Everything is read on your machine — nothing uploads anywhere.
+- **Five panel layouts:** Solo (full-bleed), Duo (side by side), Trio (hero + two stacked), Quad (2×2 grid), and Strip (three horizontal bands — a wide hero band on top, two thinner bands below). Every panel can show a different photo.
+- **A photo treatment per panel:** None, Grayscale, Sepia, or High contrast — set independently for each of the four panels, and baked into the exported PNG exactly as previewed.
 - **Crop & position per panel:** drag on the preview to pan (click selects the panel), zoom slider, Fill / Fit, reset.
-- **Caption:** bold condensed uppercase title with outline + neon glow, plus a tagline strip. Editable live.
-- **Grades:** Vice Sunset, Neon Night, Pastel Vice, and Midnight Drive (new) — gradient skies, a striped retro sun and palm silhouettes drawn in canvas. Vignette, grain and scanlines optional. **Shuffle look** randomises layout + grade in one click.
-- **Export PNG:** 1080x1080, 1080x1350, 1920x1080 — one button per size, or **Export all three sizes** at once.
+- **Caption:** a bold condensed uppercase title with outline + neon glow, plus a tagline strip. Both edit live as you type.
+- **Colour grades:** Vice Sunset, Neon Night, Pastel Vice, and Midnight Drive — gradient skies, a striped retro sun and palm silhouettes, all drawn in canvas code. Vignette, grain and scanlines are optional, and **Shuffle look** randomises layout, grade and panel treatments in one click.
+- **Export PNG:** 1080×1080, 1080×1350, 1920×1080 — one button per size, or **Export all three sizes** at once.
 
-All art is drawn in code (CSS/canvas gradients, sun, palms, lettering). No Rockstar logo, official artwork or font is used anywhere.
+All art is drawn in code (canvas gradients, sun, palms, lettering). No Rockstar logo, official artwork or font is used anywhere.
 
 ## Run it
 
@@ -35,7 +38,7 @@ Static files only — no build step, no network, no CDN. Open `app/index.html` f
 
 ## How it is handed in
 
-`main.ts` (Node 22, stdlib only) copies `app/` + `screenshots/` to `MAKEFUN_OUTPUT_DIR` (or `/output`) and writes `dossier.json` with the vendored `vendor/makefun-app.ts`. `TEST-REPORT.md` records the full test evidence for this round.
+`main.ts` (Node 22, stdlib only) checks the dossier caps first, then copies `app/` + `screenshots/` to `MAKEFUN_OUTPUT_DIR` (or `/output`), writes `dossier.json` with the vendored `vendor/makefun-app.ts`, and prints a short build summary. `node main.ts --help` shows usage. `TEST-REPORT.md` records the full test evidence for this round.
 
 ## License
 

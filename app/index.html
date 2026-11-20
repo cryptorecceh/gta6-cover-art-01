@@ -29,14 +29,56 @@
         <button type="button" data-layout="duo">Duo</button>
         <button type="button" data-layout="trio" class="active">Trio</button>
         <button type="button" data-layout="quad">Quad</button>
+        <button type="button" data-layout="strip">Strip</button>
       </div>
       <div class="panel-grid">
-        <label>Panel 1 <select data-panel="0"></select></label>
-        <label>Panel 2 <select data-panel="1"></select></label>
-        <label>Panel 3 <select data-panel="2"></select></label>
-        <label>Panel 4 <select data-panel="3"></select></label>
+        <div class="panel-cell">
+          <label>Panel 1 photo <select data-panel="0"></select></label>
+          <label>Panel 1 filter
+            <select data-filter="0">
+              <option value="none">None</option>
+              <option value="grayscale">Grayscale</option>
+              <option value="sepia">Sepia</option>
+              <option value="contrast">High contrast</option>
+            </select>
+          </label>
+        </div>
+        <div class="panel-cell">
+          <label>Panel 2 photo <select data-panel="1"></select></label>
+          <label>Panel 2 filter
+            <select data-filter="1">
+              <option value="none">None</option>
+              <option value="grayscale">Grayscale</option>
+              <option value="sepia">Sepia</option>
+              <option value="contrast">High contrast</option>
+            </select>
+          </label>
+        </div>
+        <div class="panel-cell">
+          <label>Panel 3 photo <select data-panel="2"></select></label>
+          <label>Panel 3 filter
+            <select data-filter="2">
+              <option value="none">None</option>
+              <option value="grayscale">Grayscale</option>
+              <option value="sepia">Sepia</option>
+              <option value="contrast">High contrast</option>
+            </select>
+          </label>
+        </div>
+        <div class="panel-cell">
+          <label>Panel 4 photo <select data-panel="3"></select></label>
+          <label>Panel 4 filter
+            <select data-filter="3">
+              <option value="none">None</option>
+              <option value="grayscale">Grayscale</option>
+              <option value="sepia">Sepia</option>
+              <option value="contrast">High contrast</option>
+            </select>
+          </label>
+        </div>
       </div>
       <p class="hint" id="activePanel">Panel 1 of 3</p>
+      <p class="hint">Strip stacks three horizontal bands — a wide hero band on top, two thinner bands below. Each panel keeps its own photo treatment: None, Grayscale, Sepia or High contrast.</p>
       <label class="field">Zoom <span id="zoomLabel">1.00x</span>
         <input id="zoom" type="range" min="1" max="3" step="0.05" value="1">
       </label>
