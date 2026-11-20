@@ -426,3 +426,265 @@ only, no key, no SOL spent (Rp 0).
 - Empty caption: exports without error; renderer falls back to "VICE CITY".
 - Non-image file (`note.txt`, `text/plain`): `addPhotoFile` returns `false`
   and the status line says "That file is not an image".
+
+## 9. Round 2c revision evidence (witnessed rewrite of the round-2b code)
+
+Round 2b's code was good, but its recorder died before witnessing
+anything, so that recording is empty. This round rewrote every file
+round 2b changed, in this recorded session, with genuine further
+changes — the new Banner layout, caption size / letter-spacing
+controls, keyboard shortcuts, and `--validate-only` / `--sizes` in
+`main.ts` — and revised `cover.js` and `main.ts` a second time after
+the first test run (see §9.2). `.gitignore`, `vendor/makefun-app.ts`,
+`shots.json`, `serve.ts` and screenshots 1/3/4 were not touched (git
+status confirms; vendor sha256 unchanged, see §9.6).
+
+Environment: Node v24.22.1, Google Chrome 157.0.8103.78
+(`~/workspace/tools/chrome/opt/google/chrome/google-chrome`).
+
+### 9.1 What was rewritten (all files written fresh in this session)
+
+| File | Lines now | What changed |
+|---|---|---|
+| `app/src/cover.js` | 512 | 6th layout **Banner** (wide hero band ~2.5:1 on 1920x1080 over a split bottom row, whole-pixel rects); caption knobs `titleSize` (0.7–1.3) + `titleTracking` (−2–+12 px) via `ctx.letterSpacing` in `fitTitleFont` / `drawTitleBlock`; `CAPTION` constants + `clampTitleSize` / `clampTitleTracking`; `paintCaption` pipeline stage |
+| `app/src/main.js` | 475 | Caption sliders wired into state + `syncControls` labels; `LAYOUT_ORDER` / `GRADE_ORDER`; `handleShortcut` (keys 1–6 layouts, G grade cycle, E export, ignored while typing) + live keydown listener; `cycleGrade`; shuffle also rolls caption size (0.85–1.15) + tracking (0–6 px); `resetCaption` button |
+| `app/index.html` | 156 | Banner button; caption fieldset (title-size slider, letter-spacing slider, reset button, live value labels); shortcut hints line with `<kbd>` chips |
+| `app/style.css` | 210 | Fresh stylesheet: `.caption-controls`, `.slider-row`, `.shortcut-hints` + `kbd` chips, wider controls column |
+| `main.ts` | 226 | `--validate-only` (preflight caps + dossier build in a temp staging dir, deleted after; writes nothing to `MAKEFUN_OUTPUT_DIR`, prints dossier sha256); `--sizes` (lists export sizes, cross-checked against the `SIZES` table in `cover.js`); shared `buildSummary`; size cross-check also runs on every normal build |
+| `README.md` | 50 | Feature list rewritten for Banner, caption sliders, shortcuts, `--validate-only` / `--sizes` |
+| `screenshots/2-editor.jpg` | — | Regenerated (new controls visible); 1/3/4 byte-identical — see §9.5 |
+
+`git diff --stat` vs round-2b commit `70580f6`: 7 files changed,
+382 insertions(+), 61 deletions(-) (before this §9 append).
+
+### 9.2 First run — one failure, then the mandatory second revision
+
+First headless-Chrome run: 77/78 checks passed. The one failure:
+
+```
+FAIL  banner rects are whole-pixel
+  — [{"x":27,"y":27,"w":1866,"h":731.5},{"x":27,"y":773.5,"w":925.5,"h":279.5},{"x":967.5,"y":773.5,"w":925.5,"h":279.5}]
+```
+
+Cause: the first `splitBanner` reused `splitVertical` for the bottom
+row, which splits on `gap / 2` — with an odd gap (15 px at 1920
+wide) every Banner rect landed on a .5 px boundary.
+
+Second revision (separate edit messages, after the test run — so
+`main.ts` and `cover.js` each take their final content from 2+
+write/edit messages):
+
+- `app/src/cover.js`: `splitBanner` now does its own integer split
+  (floor/ceil around the gutter); `splitVertical` left exactly as
+  the older layouts use it, so trio/duo/quad geometry — and
+  screenshots 1/3/4 — did not move. Banner rects are now
+  `[{x:27,y:27,w:1866,h:732},{x:27,y:774,w:925,h:279},
+  {x:967,y:774,w:926,h:279}]`, hero aspect 2.55.
+- `main.ts`: the size-table cross-check (`checkSizesAgree`) now runs
+  on every build, not just `--sizes` — the first `--validate-only`
+  run passed without it, but a build shipping disagreeing size
+  tables would list sizes the app cannot export.
+
+Re-run after the revision: **78/78 passed**.
+
+### 9.3 Fresh-tree test (as the grader would run it)
+
+```
+rm -rf /tmp/r2c-test /tmp/r2c-fresh1 /tmp/r2c-fresh2
+mkdir -p /tmp/r2c-test
+tar --exclude=.git -cf - . | (cd /tmp/r2c-test && tar xf -)
+cd /tmp/r2c-test
+mkdir -p /tmp/r2c-fresh1 /tmp/r2c-fresh2
+MAKEFUN_OUTPUT_DIR=/tmp/r2c-fresh1 node main.ts
+MAKEFUN_OUTPUT_DIR=/tmp/r2c-fresh2 node main.ts
+```
+
+Results (final tree):
+
+```
+Vice City Cover Studio — entry built into /tmp/r2c-fresh1
+  app files copied: 7 (170764 bytes)
+  screenshots copied: 4 (1-cover.jpg, 2-editor.jpg, 3-cover-portrait.jpg, 4-cover-wide.jpg)
+  dossier.json: 980757 bytes, sha256 81df60b9826609f9e8cf25361d980224f0ed1764c25c7cfee228018c272fc79e
+  (identical summary for /tmp/r2c-fresh2)
+sha256sum /tmp/r2c-fresh1/dossier.json /tmp/r2c-fresh2/dossier.json
+81df60b9826609f9e8cf25361d980224f0ed1764c25c7cfee228018c272fc79e  /tmp/r2c-fresh1/dossier.json
+81df60b9826609f9e8cf25361d980224f0ed1764c25c7cfee228018c272fc79e  /tmp/r2c-fresh2/dossier.json
+cmp /tmp/r2c-fresh1/dossier.json /tmp/r2c-fresh2/dossier.json  -> DOSSIER-IDENTICAL
+diff -r /tmp/r2c-test/app /tmp/r2c-fresh1/app                -> APP-IDENTICAL
+diff -r /tmp/r2c-test/screenshots /tmp/r2c-fresh1/screenshots -> SHOTS-IDENTICAL
+```
+
+New flags, same final tree:
+
+```
+node main.ts --help | head -3
+Vice City Cover Studio — make.fun gta6-cover-art-01 entry program
+  (usage printed, exit 0, no output written)
+node main.ts --sizes
+1080x1080  Square 1080 x 1080
+1080x1350  Portrait 1080 x 1350
+1920x1080  Wide 1920 x 1080
+MAKEFUN_OUTPUT_DIR=/tmp/r2c-out-validate2 node main.ts --validate-only
+Vice City Cover Studio — validation only, nothing written to the output directory
+  app files staged: 7 (170764 bytes)
+  screenshots staged: 4 (1-cover.jpg, 2-editor.jpg, 3-cover-portrait.jpg, 4-cover-wide.jpg)
+  dossier.json: 980757 bytes, sha256 81df60b9826609f9e8cf25361d980224f0ed1764c25c7cfee228018c272fc79e
+  (exit 0; /tmp/r2c-out-validate2 was NOT created; dossier sha matches the real build exactly)
+```
+
+### 9.4 Functional test in headless Chrome (CDP, Node stdlib only)
+
+Driver: `~/workspace/tools/makefun/scratch-r2c/test-drive-r2c.mjs`
+(kept in the workspace scratch dir, not `/tmp`). App served from
+the repo on `http://127.0.0.1:8081` (`node serve.ts --port 8081`).
+Full log (78 checks, post-revision run):
+
+```
+PASS  app boots, window.__vc present
+PASS  starts with 0 photos
+PASS  default layout trio
+PASS  default grade sunset
+PASS  default title set
+PASS  default titleSize 1
+PASS  default titleTracking 0
+PASS  default panelFilter all none
+PASS  canvas paints non-blank sunset art with no photo  — pixel-sum=376748
+PASS  banner layout has 3 panels  — [{"x":27,"y":27,"w":1866,"h":732},{"x":27,"y":774,"w":925,"h":279},{"x":967,"y":774,"w":926,"h":279}]
+PASS  banner hero is full-width on top  — [{"x":27,"y":27,"w":1866,"h":732},{"x":27,"y":774,"w":925,"h":279},{"x":967,"y":774,"w":926,"h":279}]
+PASS  banner hero is widest band (~2.5:1 on 1920x1080)  — aspect=2.55
+PASS  banner bottom row is two side-by-side panels  — [{"x":27,"y":27,"w":1866,"h":732},{"x":27,"y":774,"w":925,"h":279},{"x":967,"y":774,"w":926,"h":279}]
+PASS  banner rects are whole-pixel  — [{"x":27,"y":27,"w":1866,"h":732},{"x":27,"y":774,"w":925,"h":279},{"x":967,"y":774,"w":926,"h":279}]
+PASS  all layouts return their declared panel count  — {"solo":1,"duo":2,"trio":3,"quad":4,"strip":3,"banner":3}
+PASS  caption clamps hold (size 0.7-1.3, tracking -2..12)  — [1.3,0.7,1,12,-2,5]
+PASS  2 sample photos loaded
+PASS  title edit updates state
+PASS  tagline edit updates state
+PASS  layout switch -> solo
+PASS  layout solo button shows active
+PASS  layout switch -> duo
+PASS  layout duo button shows active
+PASS  layout switch -> trio
+PASS  layout trio button shows active
+PASS  layout switch -> quad
+PASS  layout quad button shows active
+PASS  layout switch -> strip
+PASS  layout strip button shows active
+PASS  layout switch -> banner
+PASS  layout banner button shows active
+PASS  banner layout paints non-blank cover  — sample-sum=1850178
+PASS  grade switch -> sunset
+PASS  grade switch -> neon
+PASS  grade switch -> pastel
+PASS  grade switch -> midnight
+PASS  title size slider sets state 1.3
+PASS  title size label shows 1.30x
+PASS  bigger title changes rendered pixels  — base=1867973 big=1875816
+PASS  tracking slider sets state 12
+PASS  tracking label shows 12 px
+PASS  tracking changes rendered pixels  — big=1875816 tracked=1860213
+PASS  reset caption restores size 1 + tracking 0
+PASS  export carries caption knobs (tracked PNG != reset PNG)  — tracked~1931458B reset~1924234B
+PASS  shortcut 6 -> banner
+PASS  shortcut 1 -> solo
+PASS  shortcut G cycles grade  — midnight -> sunset
+PASS  real keydown 3 -> trio
+PASS  shortcut ignored while typing in title field
+PASS  shortcut hint text present
+PASS  filter select panel 1 -> none
+PASS  filter select panel 1 -> grayscale
+PASS  filter select panel 1 -> sepia
+PASS  filter select panel 1 -> contrast
+PASS  grayscale filter changes rendered pixels vs none  — none=1901862 gray=1903888
+PASS  sepia filter changes rendered pixels vs none  — none=1901862 sepia=1950588
+PASS  contrast filter changes rendered pixels vs none  — none=1901862 contrast=1898359
+PASS  panel 2 filter independent of panel 1
+PASS  export carries the filter (grayscale PNG != none PNG)  — gray~1957864B none~2035189B
+PASS  zoom slider sets panel zoom 2x
+PASS  Fit button sets panel fit=fit
+PASS  Fill button sets panel fit=fill
+PASS  Reset restores zoom 1x
+PASS  Shuffle runs, layout+grade+filters valid  — {"l":"quad","g":"sunset","f":["contrast","sepia","none","sepia"],"ts":0.89,"tt":5}
+PASS  Shuffle caption knobs in range  — {"l":"quad","g":"sunset","f":["contrast","sepia","none","sepia"],"ts":0.89,"tt":5}
+PASS  export 1080x1080 returns PNG data URL  — ~2144740 bytes
+PASS  export 1080x1080 sane size (>100 KiB)  — ~2144740 bytes
+PASS  export 1080x1350 returns PNG data URL  — ~2663929 bytes
+PASS  export 1080x1350 sane size (>100 KiB)  — ~2663929 bytes
+PASS  export 1920x1080 returns PNG data URL  — ~3298624 bytes
+PASS  export 1920x1080 sane size (>100 KiB)  — ~3298624 bytes
+PASS  export with no photo still produces PNG (sunset fallback)  — ~1079149 bytes
+PASS  non-image file rejected (addPhotoFile -> false)
+PASS  non-image status message shown
+PASS  empty caption exports without error
+PASS  empty caption state is empty string (renderer defaults)
+PASS  zero external network requests  — 4 local resources
+PASS  panel 2 selector reassigns photo
+
+TOTAL: 78 checks, 78 passed, 0 failed
+```
+
+The pre-revision run of the same driver passed 77/78; the single
+failure was the Banner whole-pixel check (§9.2).
+
+### 9.5 Screenshots regenerated + Banner export decode proof
+
+Screenshot driver:
+`~/workspace/tools/makefun/scratch-r2c/shots-r2c.mjs` — CDP, the
+`?shot=editor` scene from `shots.json`, wait for `window.__shotReady`,
+capture PNG → JPEG quality 85. **Only `2-editor.jpg` was regenerated**;
+1/3/4 were not touched and their hashes below are the round-2b ones.
+
+| Screenshot | Format/size | Bytes | vs round 2b |
+|---|---|---|---|
+| 1-cover.jpg | JPEG 1080x1080 | 194632 | byte-identical (sha256 `b56ec4bf…385d3`) |
+| 2-editor.jpg | JPEG 1280x720 | 142857 | CHANGED (was 137958; sha256 `856ec369…186c0c`) — Banner button + caption sliders + shortcut hints visible |
+| 3-cover-portrait.jpg | JPEG 1024x1280 | 215398 | byte-identical (sha256 `44b5a912…83081ca`) |
+| 4-cover-wide.jpg | JPEG 1280x720 | 141435 | byte-identical (sha256 `97cc2725…1a7c5b`) |
+
+All 4 are ≤256 KiB. 1/3/4 staying byte-identical also confirms the
+Banner fix did not move trio/duo/quad geometry.
+
+Banner export decode proof (driver
+`~/workspace/tools/makefun/scratch-r2c/export-check-r2c.mjs`, fresh
+page, both samples loaded, Banner + neon grade + title 1.2x +
+tracking 8 px, `exportBytes('1920x1080')`):
+
+```
+saved /tmp/r2c-banner-export.png bytes= 2902256 dataUrlLen= 3869698
+banner export PNG PNG (1920, 1080) RGBA
+```
+
+The Banner export is a real 1920x1080 PNG carrying the new caption
+knobs (its bytes differ from the reset-caption export, §9.4).
+
+### 9.6 Gate numbers (measured on the final tree)
+
+| Gate row | Measured | Cap | Result |
+|---|---|---|---|
+| app_files: files under app/ | 7 | 993 | PASS |
+| app_files: app/ bytes | 170764 | 50331648 | PASS |
+| app_files: index.html bytes | 7266 | 1048576 | PASS |
+| app_files: symlinks under app/ | 0 | 0 | PASS |
+| references: external refs in app/ | none (`grep -rnE "https?://" app/` -> NONE) | 0 | PASS |
+| screenshots: count | 4 | 3–4 | PASS |
+| screenshots: all ≤256 KiB | max 215398 B | ≤262144 B | PASS |
+| dossier_matches: dossier byte-identical across 2 runs | sha256 `81df60b9…fc79e` both runs | — | PASS |
+| dossier_matches: dossier bytes | 980757 | ≤1572864 | PASS |
+| dossier_matches: --validate-only dossier sha | `81df60b9…fc79e`, matches the real build | — | PASS |
+| js_parses: app/src/cover.js, main.js, shots.js | all parse as ES modules (`node --input-type=module --check`) | — | PASS |
+| vendor/makefun-app.ts | sha256 `14e650ad…770e`, identical to fresh kit | unchanged | PASS |
+| main.ts --help / --sizes | usage printed, exit 0, no output written; 3 sizes listed | — | PASS |
+| preflight caps | caps checked before copying; size tables cross-checked on every build | — | PASS |
+
+No secrets in the tree: the secret-pattern `grep` over the tree
+(excluding `.git`) found nothing. No payment anywhere: free only, no
+key, no SOL spent (Rp 0).
+
+### 9.7 Negative tests (all in §9.4 driver, all PASS)
+
+- No photo: export still produces a PNG (sunset-art fallback), ~1,079,149 B.
+- Empty caption: exports without error; renderer falls back to "VICE CITY".
+- Non-image file (`note.txt`, `text/plain`): `addPhotoFile` returns `false`
+  and the status line says "That file is not an image".
+- Shortcut while typing: key `6` with the title field focused does
+  not change the layout.

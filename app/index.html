@@ -30,7 +30,9 @@
         <button type="button" data-layout="trio" class="active">Trio</button>
         <button type="button" data-layout="quad">Quad</button>
         <button type="button" data-layout="strip">Strip</button>
+        <button type="button" data-layout="banner">Banner</button>
       </div>
+      <p class="hint">Banner is the wide cinematic layout: one hero band across the top, two panels below — made for the 1920 x 1080 export. Strip stacks three horizontal bands instead.</p>
       <div class="panel-grid">
         <div class="panel-cell">
           <label>Panel 1 photo <select data-panel="0"></select></label>
@@ -78,7 +80,7 @@
         </div>
       </div>
       <p class="hint" id="activePanel">Panel 1 of 3</p>
-      <p class="hint">Strip stacks three horizontal bands — a wide hero band on top, two thinner bands below. Each panel keeps its own photo treatment: None, Grayscale, Sepia or High contrast.</p>
+      <p class="hint">Each panel keeps its own photo treatment: None, Grayscale, Sepia or High contrast.</p>
       <label class="field">Zoom <span id="zoomLabel">1.00x</span>
         <input id="zoom" type="range" min="1" max="3" step="0.05" value="1">
       </label>
@@ -90,12 +92,25 @@
       <p class="hint">Drag on the preview to pan the panel under your pointer. Click a panel to select it.</p>
     </fieldset>
 
-    <label class="field">Title
-      <input id="title" type="text" maxlength="40" value="Vice City Nights">
-    </label>
-    <label class="field">Tagline
-      <input id="tagline" type="text" maxlength="60" value="Welcome back to Vice City">
-    </label>
+    <fieldset class="caption-controls">
+      <legend>Caption — title &amp; tagline</legend>
+      <label class="field">Title
+        <input id="title" type="text" maxlength="40" value="Vice City Nights">
+      </label>
+      <label class="field">Tagline
+        <input id="tagline" type="text" maxlength="60" value="Welcome back to Vice City">
+      </label>
+      <label class="field slider-row">Title size <span id="titleSizeLabel">1.00x</span>
+        <input id="titleSize" type="range" min="0.7" max="1.3" step="0.05" value="1">
+      </label>
+      <label class="field slider-row">Letter spacing <span id="titleTrackingLabel">0 px</span>
+        <input id="titleTracking" type="range" min="-2" max="12" step="1" value="0">
+      </label>
+      <div class="row">
+        <button id="resetCaption" type="button">Reset caption size</button>
+      </div>
+      <p class="hint">Size scales the title from 0.70x to 1.30x; spacing stretches the letters from −2 to +12 px. Both are baked into the exported PNG.</p>
+    </fieldset>
 
     <fieldset>
       <legend>Colour grade</legend>
@@ -128,6 +143,7 @@
       <button id="exportWide" type="button" data-export="1920x1080">Export PNG 1920 x 1080</button>
       <button id="exportAll" type="button">Export all three sizes</button>
     </div>
+    <p class="shortcut-hints">Shortcuts: <kbd>1</kbd>–<kbd>6</kbd> layouts · <kbd>G</kbd> next grade · <kbd>E</kbd> export current size</p>
     <p id="status" role="status">Load a photo to start — or try a sample.</p>
     <p class="fine">Original art drawn in code. No Rockstar logo, artwork or font.</p>
   </section>

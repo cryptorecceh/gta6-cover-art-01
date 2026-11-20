@@ -1,20 +1,27 @@
-// Vice City Cover Studio — editor wiring, round 2b rewrite.
+// Vice City Cover Studio — editor wiring, round 2c rewrite.
 // Pick photos (picker, drag-drop or the bundled samples), choose a
 // multi-panel layout and a colour grade, give each panel its own photo
 // treatment, crop and position each panel by dragging on the preview,
-// edit the caption live, export a PNG. Photos are read with FileReader /
-// object URLs on this machine only; nothing is uploaded.
+// tune the caption's size and letter-spacing, edit the caption live,
+// export a PNG. Photos are read with FileReader / object URLs on this
+// machine only; nothing is uploaded.
 //
-// Architecture (new in 2b): one `state` object owns everything, and
-// every change goes through the same two steps —
+// Architecture (kept from 2b, extended in 2c): one `state` object owns
+// everything, and every change goes through the same two steps —
 //   applyState(patch)  — merge a patch into state, then render()
 //   render()           — resize the preview canvas, draw the cover,
 //                       then sync every control back from state
 // Event handlers never draw directly and never keep their own copy of
 // a value; they only call applyState(). That keeps the preview, the
 // controls and the exported PNG in agreement by construction.
+//
+// New in 2c: caption size + tracking sliders wired into state, the
+// sixth layout Banner, and keyboard shortcuts — keys 1–6 pick a layout
+// in order, G cycles the colour grade, E exports the current size.
+// Shortcuts are ignored while the user is typing in a text field or
+// a select, so typing a caption never triggers a layout switch.
 
-import { FILTERS, GRADES, LAYOUTS, SIZES, drawCoverArt, layoutPanels } from './cover.js';
+import { CAPTION, FILTERS, GRADES, LAYOUTS, SIZES, clampTitleSize, clampTitleTracking, drawCoverArt, layoutPanels } from './cover.js';
 import { runShot } from './shots.js';
 
 // ---- element handles (queried once, up front) ----
@@ -23,10 +30,18 @@ const canvas = $('cover');
 const statusEl = $('status');
 const titleInput = $('title');
 const taglineInput = $('tagline');
+const titleSizeInput = $('titleSize');
+const titleSizeLabel = $('titleSizeLabel');
+const titleTrackingInput = $('titleTracking');
+const titleTrackingLabel = $('titleTrackingLabel');
 const zoomInput = $('zoom');
 const zoomLabel = $('zoomLabel');
 const activePanelEl = $('activePanel');
 const photoInput = $('photo');
+
+// Layouts in shortcut order: keys 1-6 map to this list, in order.
+export const LAYOUT_ORDER = ['solo', 'duo', 'trio', 'quad', 'strip', 'banner'];
+export const GRADE_ORDER = ['sunset', 'neon', 'pastel', 'midnight'];
 
 // ---- the single source of truth ----
 export const state = {
@@ -41,6 +56,8 @@ export const state = {
   grade: 'sunset',
   title: 'Vice City Nights',
   tagline: 'Welcome back to Vice City',
+  titleSize: CAPTION.titleSizeDefault,
+  titleTracking: CAPTION.titleTrackingDefault,
   size: '1080x1080',
   vignette: true,
   grain: false,
@@ -117,6 +134,15 @@ export function syncControls() {
     const idx = Number(sel.dataset.filter);
     sel.value = state.panelFilter[idx] || 'none';
   });
+  // Caption size + tracking sliders (2c): labels show the live value.
+  if (titleSizeInput) {
+    titleSizeInput.value = String(clampTitleSize(state.titleSize));
+    if (titleSizeLabel) titleSizeLabel.textContent = `${clampTitleSize(state.titleSize).toFixed(2)}x`;
+  }
+  if (titleTrackingInput) {
+    titleTrackingInput.value = String(clampTitleTracking(state.titleTracking));
+    if (titleTrackingLabel) titleTrackingLabel.textContent = `${clampTitleTracking(state.titleTracking)} px`;
+  }
   // Selected-panel readout + zoom slider.
   const panelCount = (LAYOUTS[state.layout] || LAYOUTS.solo).panels;
   if (activePanelEl) activePanelEl.textContent = `Panel ${selectedPanel + 1} of ${panelCount}`;
@@ -176,7 +202,12 @@ export async function loadSample(name) {
   return true;
 }
 
-/** Random layout + grade (+ a random filter per panel) in one click. */
+/**
+ * Random layout + grade (+ a random filter per panel) in one click.
+ * 2c: the shuffle also rolls the caption knobs — a title size between
+ * 0.85x and 1.15x and tracking between 0 and 6 px — so a shuffled look
+ * can land on a wider, airier caption as well as a new layout.
+ */
 export function shuffleLook() {
   const layoutKeys = Object.keys(LAYOUTS);
   const gradeKeys = Object.keys(GRADES);
@@ -187,8 +218,47 @@ export function shuffleLook() {
   const panelPhoto = state.photos.length > 1
     ? state.panelPhoto.map(() => Math.floor(Math.random() * state.photos.length))
     : state.panelPhoto;
-  applyState({ layout, grade, panelFilter, panelPhoto });
+  const titleSize = Math.round((0.85 + Math.random() * 0.3) * 100) / 100;
+  const titleTracking = Math.floor(Math.random() * 7);
+  applyState({ layout, grade, panelFilter, panelPhoto, titleSize, titleTracking });
   setStatus(`Shuffled: ${LAYOUTS[layout].label} layout, ${GRADES[grade].label} grade.`);
+}
+
+/** Advance the grade one step (wraps); used by the G shortcut. */
+export function cycleGrade() {
+  const next = GRADE_ORDER[(GRADE_ORDER.indexOf(state.grade) + 1) % GRADE_ORDER.length];
+  applyState({ grade: next });
+  setStatus(`Grade: ${GRADES[next].label}.`);
+  return next;
+}
+
+// ---- keyboard shortcuts (2c) ----
+
+/**
+ * Handle one keydown for the shortcut layer. Returns the action taken
+ * ('layout', 'grade', 'export') or null when the key is not a shortcut
+ * or the user is typing. Exported so the test driver can call it
+ * directly; the live listener below is a thin wrapper around it.
+ */
+export function handleShortcut(event) {
+  const target = event.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return null;
+  const key = (event.key || '').toLowerCase();
+  if (key >= '1' && key <= String(LAYOUT_ORDER.length)) {
+    const layout = LAYOUT_ORDER[Number(key) - 1];
+    applyState({ layout });
+    setStatus(`Layout: ${LAYOUTS[layout].label}.`);
+    return 'layout';
+  }
+  if (key === 'g') {
+    cycleGrade();
+    return 'grade';
+  }
+  if (key === 'e') {
+    exportPNG(state.size);
+    return 'export';
+  }
+  return null;
 }
 
 // ---- control wiring (one function, called once at boot) ----
@@ -200,6 +270,12 @@ function bindControls() {
   });
   titleInput.addEventListener('input', () => applyState({ title: titleInput.value }));
   taglineInput.addEventListener('input', () => applyState({ tagline: taglineInput.value }));
+  titleSizeInput?.addEventListener('input', () => {
+    applyState({ titleSize: clampTitleSize(Number(titleSizeInput.value)) });
+  });
+  titleTrackingInput?.addEventListener('input', () => {
+    applyState({ titleTracking: clampTitleTracking(Number(titleTrackingInput.value)) });
+  });
   zoomInput.addEventListener('input', () => {
     const zoom = Number(zoomInput.value);
     const panelZoom = [...state.panelZoom];
@@ -235,6 +311,10 @@ function bindControls() {
     panelZoom[selectedPanel] = 1;
     applyState({ panelOX, panelOY, panelZoom });
   });
+  $('resetCaption')?.addEventListener('click', () => {
+    applyState({ titleSize: CAPTION.titleSizeDefault, titleTracking: CAPTION.titleTrackingDefault });
+    setStatus('Caption size and spacing reset to defaults.');
+  });
   $('shuffleBtn').addEventListener('click', () => shuffleLook());
   $('vignette').addEventListener('change', (e) => applyState({ vignette: e.target.checked }));
   $('grain').addEventListener('change', (e) => applyState({ grain: e.target.checked }));
@@ -263,6 +343,9 @@ function bindControls() {
       applyState({ panelFilter });
     });
   });
+
+  // Keyboard shortcuts: 1-6 layouts, G grade cycle, E export.
+  document.addEventListener('keydown', (e) => handleShortcut(e));
 
   // Drag on the preview to pan the panel under the pointer (and select it).
   canvas.addEventListener('pointerdown', (e) => {
@@ -362,7 +445,8 @@ export function exportBytes(sizeId) {
 // test hook: lets automated checks drive the app without a mouse
 window.__vc = {
   state, loadSample, addPhotoFile, exportBytes, exportPNG, exportAllSizes,
-  shuffleLook, redraw: render, render, applyState, currentSize,
+  shuffleLook, cycleGrade, handleShortcut, LAYOUT_ORDER, GRADE_ORDER,
+  redraw: render, render, applyState, currentSize,
   get selectedPanel() { return selectedPanel; },
 };
 

@@ -1,18 +1,27 @@
-// Vice City Cover Studio — cover renderer, round 2b rewrite.
-// The look is drawn entirely in code: gradient skies, a striped retro sun,
-// palm silhouettes, panel frames and lettering. Nothing here is Rockstar
-// artwork, a Rockstar logo or a Rockstar font — the style is original,
-// in the genre of a neon beach-city poster.
+// Vice City Cover Studio — cover renderer, round 2c rewrite.
+// The look is drawn entirely in code: gradient skies, a striped retro
+// sun, palm silhouettes, panel frames and lettering. Nothing here is
+// Rockstar artwork, a Rockstar logo or a Rockstar font — the style is
+// original, in the genre of a neon beach-city poster.
 //
-// Architecture (new in 2b): a small render pipeline. drawCoverArt() runs
-// four stages in order and nothing else does the drawing:
-//   1. planLayout()   — turn a layout name + canvas size into panel rects
+// Architecture (2c, kept from 2b and extended): a small render pipeline.
+// drawCoverArt() runs four stages in order and nothing else draws:
+//   1. planLayout()   — a layout name + canvas size into panel rects
 //   2. paintPanels()  — one panel at a time: photo (with its filter) or
-//                       the fallback sky art, then the grade wash + frame
-//   3. paintCaption() — title + tagline band across the bottom
+//                       the fallback sky art, then grade wash + frame
+//   3. paintCaption() — title + tagline band across the bottom, with
+//                       the caption size / letter-spacing controls
 //   4. paintFinish()  — vignette / scanlines / grain / outer border
 // Each stage is a plain function that takes what it needs and returns
 // nothing; shared drawing helpers (sun, palm, text fitting) sit below.
+//
+// New in 2c: a sixth layout, Banner, and caption typography controls.
+// Banner is a wide cinematic band: one hero panel across the top
+// (about 2.5:1 on the 1920x1080 export) over a bottom row split into
+// two panels. The caption now has two knobs in state — titleSize (a
+// 0.7–1.3 multiplier on the fitted title size) and titleTracking
+// (letter-spacing in px, -2 to +12) — both honoured by the renderer
+// and by the exported PNG, not just the preview.
 
 export const GRADES = {
   sunset: {
@@ -55,10 +64,10 @@ export const FILTERS = {
   none: { label: 'None', css: 'none' },
   grayscale: { label: 'Grayscale', css: 'grayscale(1)' },
   sepia: { label: 'Sepia', css: 'sepia(0.85)' },
-  // Tuned after the first headless render: contrast(1.45) barely moved
-  // the pixels (panel sum changed ~0.4% vs none, against ~2.3% for sepia),
-  // so the high-contrast treatment is now stronger and lifts brightness
-  // slightly so shadows do not crush to black.
+  // Retuned in 2b: contrast(1.45) barely moved the pixels (panel sum
+  // changed ~0.4% vs none, against ~2.3% for sepia), so the high-
+  // contrast treatment is stronger and lifts brightness slightly so
+  // shadows do not crush to black.
   contrast: { label: 'High contrast', css: 'contrast(1.65) saturate(1.45) brightness(1.05)' },
 };
 
@@ -73,6 +82,7 @@ export const LAYOUTS = {
   trio: { label: 'Trio', panels: 3 },
   quad: { label: 'Quad', panels: 4 },
   strip: { label: 'Strip', panels: 3 },
+  banner: { label: 'Banner', panels: 3 },
 };
 
 export const SIZES = [
@@ -80,6 +90,32 @@ export const SIZES = [
   { id: '1080x1350', label: 'Portrait 1080 x 1350', w: 1080, h: 1350 },
   { id: '1920x1080', label: 'Wide 1920 x 1080', w: 1920, h: 1080 },
 ];
+
+// ---------------------------------------------------------------- caption knobs
+
+/** Caption typography defaults and hard limits (shared by cover + editor). */
+export const CAPTION = {
+  titleSizeMin: 0.7,
+  titleSizeMax: 1.3,
+  titleSizeDefault: 1,
+  titleTrackingMin: -2,
+  titleTrackingMax: 12,
+  titleTrackingDefault: 0,
+};
+
+/** Clamp a title-size multiplier into the slider range. */
+export function clampTitleSize(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return CAPTION.titleSizeDefault;
+  return Math.min(CAPTION.titleSizeMax, Math.max(CAPTION.titleSizeMin, n));
+}
+
+/** Clamp letter-spacing (px) into the slider range; whole pixels only. */
+export function clampTitleTracking(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return CAPTION.titleTrackingDefault;
+  return Math.min(CAPTION.titleTrackingMax, Math.max(CAPTION.titleTrackingMin, Math.round(n)));
+}
 
 // ---------------------------------------------------------------- layout
 
@@ -117,13 +153,41 @@ function splitHorizontal(x, y, totalW, totalH, gap, fractions) {
 }
 
 /**
+ * Banner geometry: a wide hero band across the top (72% of the inner
+ * height, so on the 1920x1080 export it is roughly a 2.5:1 cinematic
+ * band) and a bottom row split vertically into two panels.
+ *
+ * Whole-pixel rects only, by construction: the first version reused
+ * splitVertical for the bottom row, which splits on gap / 2 — with an
+ * odd gap (15 px at 1920 wide) that put every Banner rect on a .5 px
+ * boundary (hero h 731.5, bottom x 967.5). The first headless run
+ * caught it (banner whole-pixel check failed, 77/78). So Banner does
+ * its own integer split here — floor/ceil around the gutter — and
+ * splitVertical is left exactly as the older layouts use it, so their
+ * geometry (and screenshots 1/3/4) does not move.
+ */
+function splitBanner(x, y, totalW, totalH, gap) {
+  const heroH = Math.round(totalH * 0.72);
+  const hero = { x, y, w: totalW, h: heroH - Math.floor(gap / 2) };
+  const bottomY = y + heroH + Math.ceil(gap / 2);
+  const bottomH = y + totalH - bottomY;
+  const leftW = Math.floor((totalW - gap) / 2);
+  return [
+    hero,
+    { x, y: bottomY, w: leftW, h: bottomH },
+    { x: x + leftW + gap, y: bottomY, w: totalW - leftW - gap, h: bottomH },
+  ];
+}
+
+/**
  * Stage 1 — panel rectangles for a layout. The poster keeps a white
  * outer frame and thin gutters between panels.
- *   solo  — one full-bleed panel
- *   duo   — two side-by-side panels
- *   trio  — hero panel left, two stacked panels right
- *   quad  — 2 x 2 grid
- *   strip — three horizontal bands (hero band on top, two thinner bands)
+ *   solo   — one full-bleed panel
+ *   duo    — two side-by-side panels
+ *   trio   — hero panel left, two stacked panels right
+ *   quad   — 2 x 2 grid
+ *   strip  — three horizontal bands (hero band on top, two thinner bands)
+ *   banner — wide hero band on top, two panels side by side below
  */
 export function layoutPanels(layout, w, h) {
   const { gap, frame } = frameMetrics(w);
@@ -133,6 +197,7 @@ export function layoutPanels(layout, w, h) {
   const ch = h - frame * 2;
   if (layout === 'duo') return splitVertical(x0, y0, cw, ch, gap);
   if (layout === 'strip') return splitHorizontal(x0, y0, cw, ch, gap, [0.44, 0.30, 0.26]);
+  if (layout === 'banner') return splitBanner(x0, y0, cw, ch, gap);
   if (layout === 'trio') {
     const splitX = x0 + cw * 0.58;
     const midY = y0 + ch / 2;
@@ -274,10 +339,18 @@ export function drawPhotoPanel(ctx, img, rect, transform, filterId) {
 
 // ---------------------------------------------------------------- caption
 
-/** Shrink a bold one-line title until it fits maxWidth; returns the size. */
-export function fitTitleFont(ctx, text, maxWidth, startSize) {
+/**
+ * Shrink a bold one-line title until it fits maxWidth; returns the size.
+ * `tracking` is the letter-spacing in px (ctx.letterSpacing): it is set
+ * on the context before measuring, because Chrome counts the spacing in
+ * measureText, so a widely-tracked title still shrinks instead of
+ * overflowing the frame. `startSize` is already multiplied by the
+ * titleSize knob by the caller.
+ */
+export function fitTitleFont(ctx, text, maxWidth, startSize, tracking = 0) {
   const fontFor = (s) => `900 ${s}px 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif`;
   let size = startSize;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${tracking}px`;
   ctx.font = fontFor(size);
   while (size > 14 && ctx.measureText(text).width > maxWidth) {
     size -= 2;
@@ -286,9 +359,18 @@ export function fitTitleFont(ctx, text, maxWidth, startSize) {
   return size;
 }
 
-/** Stage 3 — the title + tagline block over the bottom of the cover. */
-export function drawTitleBlock(ctx, w, h, grade, title, tagline) {
+/**
+ * Stage 3 — the title + tagline block over the bottom of the cover.
+ * `opts` carries the 2c caption knobs: { titleSize, titleTracking }.
+ * titleSize multiplies the fitted base size (0.7–1.3); titleTracking
+ * sets ctx.letterSpacing for the title only (the tagline keeps tight
+ * spacing). Letter-spacing is reset to 0px before returning so no
+ * later drawing inherits it.
+ */
+export function drawTitleBlock(ctx, w, h, grade, title, tagline, opts = {}) {
   const text = (title || 'VICE CITY').trim().toUpperCase() || 'VICE CITY';
+  const titleSize = clampTitleSize(opts.titleSize ?? CAPTION.titleSizeDefault);
+  const tracking = clampTitleTracking(opts.titleTracking ?? CAPTION.titleTrackingDefault);
   const bandH = h * 0.16;
   const bandY = h - bandH - h * 0.02;
   const shade = ctx.createLinearGradient(0, bandY - h * 0.03, 0, h);
@@ -297,7 +379,8 @@ export function drawTitleBlock(ctx, w, h, grade, title, tagline) {
   shade.addColorStop(1, 'rgba(10, 4, 24, 0.88)');
   ctx.fillStyle = shade;
   ctx.fillRect(0, bandY - h * 0.03, w, h - bandY + h * 0.03);
-  const size = fitTitleFont(ctx, text, w * 0.92, Math.round(h * 0.115));
+  const baseSize = Math.round(h * 0.115);
+  const size = fitTitleFont(ctx, text, w * 0.92, Math.round(baseSize * titleSize), tracking);
   const cx = w / 2;
   const ty = h - h * 0.075;
   ctx.textAlign = 'center';
@@ -312,6 +395,7 @@ export function drawTitleBlock(ctx, w, h, grade, title, tagline) {
   ctx.fillStyle = grade.title;
   ctx.fillText(text, cx, ty);
   ctx.shadowBlur = 0;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   const titleW = ctx.measureText(text).width;
   ctx.fillStyle = grade.titleGlow;
   ctx.fillRect(cx - titleW / 2, ty + size * 0.10, titleW, Math.max(3, h * 0.006));
@@ -329,6 +413,14 @@ export function drawTitleBlock(ctx, w, h, grade, title, tagline) {
   ctx.textBaseline = 'middle';
   ctx.fillText(tag.toUpperCase(), cx, tagY + tagH / 2 + 1);
   ctx.textBaseline = 'alphabetic';
+}
+
+/** Stage 3 as a pipeline step: caption knobs read from state. */
+export function paintCaption(ctx, w, h, grade, state) {
+  drawTitleBlock(ctx, w, h, grade, state.title, state.tagline, {
+    titleSize: state.titleSize,
+    titleTracking: state.titleTracking,
+  });
 }
 
 // ---------------------------------------------------------------- finish
@@ -406,8 +498,8 @@ export function paintPanels(ctx, panels, grade, state) {
 /**
  * The pipeline entry point. Renders the whole cover into ctx at w x h.
  * state: { photos, panelPhoto, panelZoom, panelOX, panelOY, panelFit,
- *          panelFilter, layout, grade, title, tagline,
- *          vignette, grain, scanlines }
+ *          panelFilter, layout, grade, title, tagline, titleSize,
+ *          titleTracking, vignette, grain, scanlines }
  */
 export function drawCoverArt(ctx, w, h, state) {
   const grade = GRADES[state.grade] || GRADES.sunset;
@@ -415,6 +507,6 @@ export function drawCoverArt(ctx, w, h, state) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, w, h);
   paintPanels(ctx, panels, grade, state);
-  drawTitleBlock(ctx, w, h, grade, state.title, state.tagline);
+  paintCaption(ctx, w, h, grade, state);
   drawFinish(ctx, w, h, state);
 }

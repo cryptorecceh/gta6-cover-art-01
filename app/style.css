@@ -1,6 +1,8 @@
-/* Vice City Cover Studio — neon dusk editor theme, round 2b.
+/* Vice City Cover Studio — neon dusk editor theme, round 2c.
    System fonts only; all colour comes from the grade palettes in
-   src/cover.js, this file only dresses the editor chrome. */
+   src/cover.js, this file only dresses the editor chrome.
+   New in 2c: caption-control sliders, the Banner button row, and
+   keyboard-shortcut hints (kbd chips + .shortcut-hints). */
 * { box-sizing: border-box; }
 
 html, body {
@@ -17,7 +19,7 @@ html, body {
   align-items: flex-start;
   justify-content: center;
   padding: 22px;
-  max-width: 1500px;
+  max-width: 1520px;
   margin: 0 auto;
 }
 
@@ -26,7 +28,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  width: 340px;
+  width: 348px;
   flex: none;
 }
 
@@ -136,6 +138,39 @@ button#shuffleBtn:hover { background: #4a2d73; }
 }
 
 .panel-cell select { font-size: 13px; padding: 7px 8px; }
+
+/* ---- caption controls (2c) ---- */
+.caption-controls {
+  border-color: #6b4fa3;
+  background: #180c2a;
+}
+
+.slider-row span {
+  color: #ffd319;
+  font-weight: 800;
+}
+
+.slider-row input[type=range] { accent-color: #ffd319; }
+
+#resetCaption { background: #2c1a4d; }
+
+/* ---- keyboard shortcut hints (2c) ---- */
+.shortcut-hints {
+  margin: 0;
+  font-size: 13px;
+  color: #b9a8d8;
+}
+
+.shortcut-hints kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid #6b4fa3;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: #241640;
+  color: #ffd319;
+  font: 700 12px/1.5 system-ui, sans-serif;
+}
 
 /* ---- export ---- */
 .export-row { display: flex; flex-direction: column; gap: 8px; }
