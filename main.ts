@@ -18,6 +18,10 @@
 //                    MAKEFUN_OUTPUT_DIR. Prints the dossier sha256.
 //   --sizes          list the export sizes the app offers (from SIZES)
 //                    and exit without touching the output directory.
+// New in 2d: --formats lists the export formats (png, jpeg) and JPEG
+// qualities, validated against app/src/export.js the same way --sizes
+// is validated against app/src/cover.js. The export module itself
+// (app/src/export.js) is new in 2d; main.ts does not import it.
 // The size list lives in app/src/cover.js as the single source of truth;
 // main.ts reads it back with a small lexical scan (no import of the
 // browser module, which would pull in DOM-only code at load time).
@@ -31,7 +35,7 @@ import { buildDossier } from './vendor/makefun-app.ts';
 const USAGE = `Vice City Cover Studio — make.fun gta6-cover-art-01 entry program
 
 Usage:
-  node main.ts [--help] [--validate-only] [--sizes]
+  node main.ts [--help] [--validate-only] [--sizes] [--formats]
 
 Copies app/ and screenshots/ into MAKEFUN_OUTPUT_DIR (default /output)
 and writes dossier.json there with the vendored make.fun library.
@@ -43,6 +47,8 @@ fails fast with an error and no output is written.
                    directory, then delete it; writes nothing to the
                    output directory. Prints the dossier sha256.
   --sizes          list the export sizes (from app/src/cover.js) and exit.
+  --formats        list the export formats (from app/src/export.js) and
+                   exit; fails if the module does not offer png + jpeg.
 `;
 
 export const CAPS = {
@@ -59,6 +65,10 @@ export const EXPORT_SIZES = [
   { id: '1080x1350', label: 'Portrait 1080 x 1350', w: 1080, h: 1350 },
   { id: '1920x1080', label: 'Wide 1920 x 1080', w: 1920, h: 1080 },
 ];
+
+/** The export formats + JPEG qualities, mirroring app/src/export.js. */
+export const EXPORT_FORMATS = ['png', 'jpeg'];
+export const JPEG_QUALITIES = [0.8, 0.9, 0.95];
 
 const repoRoot = fileURLToPath(new URL('.', import.meta.url));
 const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
@@ -153,6 +163,31 @@ function checkSizesAgree(appSource: string): void {
   }
 }
 
+/**
+ * Cross-check the hardcoded EXPORT_FORMATS / JPEG_QUALITIES above
+ * against app/src/export.js, so the two can never drift apart: the
+ * --formats output is only printed when the module offers exactly the
+ * formats and qualities main.ts claims. A lexical scan is enough — the
+ * tables are one-line array literals — and it keeps main.ts free of
+ * any browser-module import (export.js pulls in DOM-only code).
+ */
+function checkFormatsAgree(appSource: string): void {
+  const exportJs = readFileSync(join(appSource, 'src', 'export.js'), 'utf8');
+  const formatsMatch = /EXPORT_FORMATS\s*=\s*\[([^\]]+)\]/.exec(exportJs);
+  const qualitiesMatch = /JPEG_QUALITIES\s*=\s*\[([^\]]+)\]/.exec(exportJs);
+  if (!formatsMatch || !qualitiesMatch) {
+    fail('app/src/export.js does not declare EXPORT_FORMATS / JPEG_QUALITIES — format tables disagree');
+  }
+  const formats = formatsMatch[1]!.split(',').map((s) => s.trim().replace(/['"]/g, ''));
+  const qualities = qualitiesMatch[1]!.split(',').map((s) => Number(s.trim()));
+  if (formats.length !== EXPORT_FORMATS.length || !EXPORT_FORMATS.every((f, i) => formats[i] === f)) {
+    fail(`export.js EXPORT_FORMATS [${formats.join(', ')}] disagrees with main.ts [${EXPORT_FORMATS.join(', ')}]`);
+  }
+  if (qualities.length !== JPEG_QUALITIES.length || !JPEG_QUALITIES.every((q, i) => qualities[i] === q)) {
+    fail(`export.js JPEG_QUALITIES [${qualities.join(', ')}] disagrees with main.ts [${JPEG_QUALITIES.join(', ')}]`);
+  }
+}
+
 /** Copy app/ + screenshots/ into dir (used by the real build and by --validate-only staging). */
 function stageEntry(appSource: string, shotsSource: string, dir: string): void {
   cpSync(appSource, join(dir, 'app'), { recursive: true });
@@ -185,11 +220,20 @@ function main(): void {
     return;
   }
 
-  // Cross-check the size tables on every build, not just --sizes:
-  // the first --validate-only run passed without it, but a build that
-  // silently shipped disagreeing size tables would list sizes the app
-  // cannot export. Fails fast, before any copying.
+  if (args.includes('--formats')) {
+    checkFormatsAgree(appSource);
+    for (const f of EXPORT_FORMATS) console.log(f);
+    console.log(`jpeg qualities: ${JPEG_QUALITIES.join(', ')}`);
+    return;
+  }
+
+  // Cross-check the size AND format tables on every build, not just
+  // --sizes / --formats: the first --validate-only run passed without
+  // the format check, but a build shipping an export module whose
+  // formats disagree with main.ts would list formats the app cannot
+  // export. Fails fast, before any copying.
   checkSizesAgree(appSource);
+  checkFormatsAgree(appSource);
   const pre = preflightCaps(appSource, shotsSource);
 
   if (args.includes('--validate-only')) {

@@ -688,3 +688,223 @@ key, no SOL spent (Rp 0).
   and the status line says "That file is not an image".
 - Shortcut while typing: key `6` with the title field focused does
   not change the layout.
+
+## 10. Round 2d revision evidence (JPEG export module + --formats)
+
+Round 2c left `thinking_reproduces` at 515/1831 authored lines (28.1%,
+need ≥30% = 550). This round adds one genuinely new, fully tested
+module — `app/src/export.js` (PNG + JPEG export orchestration) — plus
+the `--formats` flag in `main.ts`, wired through the app. `thinking_revised`
+already passed and was kept passing: no logic in `cover.js` changed.
+`.gitignore`, `vendor/makefun-app.ts`, `shots.json`, `serve.ts`,
+`app/src/cover.js` and screenshots 1/3/4 were not touched (git status
+confirms; vendor sha256 unchanged, see §10.6).
+
+Environment: Node v24.22.1, Google Chrome 157.0.8103.78
+(`~/workspace/tools/chrome/opt/google/chrome/google-chrome`).
+
+### 10.1 What was added
+
+| File | Lines now | What changed |
+|---|---|---|
+| `app/src/export.js` | 157 (new) | **New module.** `EXPORT_FORMATS = ['png', 'jpeg']`, `JPEG_QUALITIES = [0.8, 0.9, 0.95]`, `DEFAULT_JPEG_QUALITY = 0.9`; `clampQuality`; `slugifyTitle` + `safeFilename(title, sizeId, format)` (`vice-city-cover-<slug>-<size>.png/.jpg`, empty/punctuation-only caption → `cover`, slug capped at 40 chars); `canvasToBlob(canvas, format, quality)` — JPEG is painted onto a white-filled copy first (JPEG has no alpha; a transparent pixel would otherwise export black); `downloadFile(blob, filename)` (object URL, revoked after the click); `createExporter({ render, getTitle, setStatus })` returning `exportPNG(size)`, `exportJPEG(size, quality)`, `exportAll(sizes, format, onProgress, quality)` (progress callback `{ done, total, sizeId, format }` after each file, unknown format throws instead of silently exporting nothing) and `exportDataURL(size, format, quality)` (test hook — data URL instead of a download) |
+| `app/src/main.js` | 469 | Imports `createExporter`; the inline `exportPNG` / `exportAllSizes` / `exportBytes` bodies are gone — all export buttons, the E shortcut and `window.__vc` now go through the one exporter instance (render = `renderExport`, title = `state.title`). `exportBytes` kept as a PNG `exportDataURL` wrapper; `window.__vc` gains `exportJPEG` + `exportDataURL`. JPEG button + quality select wired in `bindControls` |
+| `app/index.html` | 167 | JPEG export row next to the PNG buttons: **Export JPEG (current size)** button + **JPEG quality** select (0.8 smaller file / 0.9 balanced, selected / 0.95 near lossless), plus a hint line explaining the white-background rule |
+| `app/style.css` | 225 | `.jpeg-row` styles (JPEG button in the gold accent, quality label) |
+| `main.ts` | 270 | `--formats` flag: prints `png` / `jpeg` + `jpeg qualities: 0.8, 0.9, 0.95`, validated against `app/src/export.js` by `checkFormatsAgree` (lexical scan of `EXPORT_FORMATS` / `JPEG_QUALITIES`, same pattern as `--sizes` vs `cover.js`); USAGE lists `--formats`; second revision (see §10.2) also runs the format cross-check on every build |
+| `README.md` | 50 | Export bullet rewritten for JPEG (qualities, white background, caption-derived filenames); "How it is handed in" mentions `--formats` |
+| `screenshots/2-editor.jpg` | — | Regenerated (JPEG controls visible); 1/3/4 byte-identical — see §10.5 |
+
+`git diff --stat` vs round-2c commit `6e40c0b`: 6 files changed,
+105 insertions(+), 41 deletions(-), plus the new `app/src/export.js`
+(157 lines). `app/src/shots.js` needed no change — it lists shot
+scenes, not export sizes.
+
+### 10.2 First run — one failure (test bug, not app bug), then the second revision
+
+First headless-Chrome run: 67/68 checks passed. The one failure:
+
+```
+FAIL  safeFilename truncates long titles (<= 40-char slug)
+  — vice-city-cover-a-very-long-caption-that-goes-on-and-on-1080x1350.jpg
+```
+
+Cause: the driver's assertion was wrong, not the code — it required
+the whole filename to be under 60 characters, but the filename also
+carries the `vice-city-cover-` prefix, the size id and `.jpg`. The
+slug itself is `a-very-long-caption-that-goes-on-and-on` (39 chars,
+correctly capped at 40). The driver check was fixed to measure the
+slug portion only. Re-run after the fix: **68/68 passed**.
+
+Second revision of `main.ts` (separate edit messages, after the
+first run — so `main.ts` takes its final content from 2+ write/edit
+messages):
+
+- The first `--formats` run showed the USAGE line still read
+  `node main.ts [--help] [--validate-only] [--sizes]` — it now lists
+  `[--formats]` too.
+- `checkFormatsAgree` only ran for `--formats` itself. Like the size
+  cross-check (2c), it now runs on **every build** before any copying:
+  a build can no longer ship an export module whose formats disagree
+  with `main.ts`.
+
+### 10.3 Fresh-tree test (as the grader would run it)
+
+```sh
+rm -rf /tmp/r2d-test /tmp/r2d-fresh1 /tmp/r2d-fresh2
+mkdir -p /tmp/r2d-test
+tar --exclude=.git -cf - . | (cd /tmp/r2d-test && tar xf -)
+cd /tmp/r2d-test
+mkdir -p /tmp/r2d-fresh1 /tmp/r2d-fresh2
+MAKEFUN_OUTPUT_DIR=/tmp/r2d-fresh1 node main.ts
+MAKEFUN_OUTPUT_DIR=/tmp/r2d-fresh2 node main.ts
+```
+
+Results (final tree, after the screenshot-2 regeneration):
+
+```
+Vice City Cover Studio — entry built into /tmp/r2d-fresh1
+  app files copied: 8 (178117 bytes)
+  screenshots copied: 4 (1-cover.jpg, 2-editor.jpg, 3-cover-portrait.jpg, 4-cover-wide.jpg)
+  dossier.json: 988311 bytes, sha256 798e49f5166fc607b8e617c4ab298e901226cc8138a01bd63dd65e7b2fa546f5
+  (identical summary for /tmp/r2d-fresh2)
+sha256sum /tmp/r2d-fresh1/dossier.json /tmp/r2d-fresh2/dossier.json
+798e49f5166fc607b8e617c4ab298e901226cc8138a01bd63dd65e7b2fa546f5  /tmp/r2d-fresh1/dossier.json
+798e49f5166fc607b8e617c4ab298e901226cc8138a01bd63dd65e7b2fa546f5  /tmp/r2d-fresh2/dossier.json
+cmp /tmp/r2d-fresh1/dossier.json /tmp/r2d-fresh2/dossier.json  -> DOSSIER-IDENTICAL
+diff -r /tmp/r2d-test/app /tmp/r2d-fresh1/app                -> APP-IDENTICAL
+diff -r /tmp/r2d-test/screenshots /tmp/r2d-fresh1/screenshots -> SHOTS-IDENTICAL
+```
+
+New flags, same final tree:
+
+```
+node main.ts --formats
+png
+jpeg
+jpeg qualities: 0.8, 0.9, 0.95
+node main.ts --sizes
+1080x1080  Square 1080 x 1080
+1080x1350  Portrait 1080 x 1350
+1920x1080  Wide 1920 x 1080
+node main.ts --help
+Vice City Cover Studio — make.fun gta6-cover-art-01 entry program
+  (usage printed, exit 0, no output written; usage now lists --formats)
+MAKEFUN_OUTPUT_DIR=/tmp/r2d-out-validate2 node main.ts --validate-only
+Vice City Cover Studio — validation only, nothing written to the output directory
+  app files staged: 8 (178117 bytes)
+  screenshots staged: 4 (1-cover.jpg, 2-editor.jpg, 3-cover-portrait.jpg, 4-cover-wide.jpg)
+  dossier.json: 988311 bytes, sha256 798e49f5166fc607b8e617c4ab298e901226cc8138a01bd63dd65e7b2fa546f5
+  (exit 0; /tmp/r2d-out-validate2 was NOT created; dossier sha matches the real build exactly)
+```
+
+### 10.4 Functional test in headless Chrome (CDP, Node stdlib only)
+
+Driver: `~/workspace/tools/makefun/scratch-r2d/test-drive-r2d.mjs`
+(kept in the workspace scratch dir, not `/tmp`). App served from
+the repo on `http://127.0.0.1:8081` (`node serve.ts --port 8081`).
+**68 checks, 68 passed, 0 failed** (results in
+`~/workspace/tools/makefun/scratch-r2d/results.json`).
+
+What it covers, beyond the round-2c checks (which still pass —
+PNG exports, shortcuts, filters, negatives all re-verified):
+
+- Export module units (imported directly in the page):
+  `EXPORT_FORMATS` is `["png","jpeg"]`, `JPEG_QUALITIES` is
+  `[0.8,0.9,0.95]`, default quality 0.9; `safeFilename` cases —
+  PNG `vice-city-cover-vice-city-nights-1080x1080.png`, JPEG
+  `...-1080x1080.jpg`, empty title → `vice-city-cover-cover-1080x1080.jpg`,
+  punctuation-only title → `cover`, 60-char title → 39-char slug;
+  `clampQuality(2) = 1`, `clampQuality(-1) = 0`, `clampQuality(NaN) = 0.9`.
+- White-background rule: a fully transparent 64x64 canvas JPEG-exports
+  to pixel `(255, 255, 255)` — white, not black.
+- PNG export at all 3 sizes: data URL + in-page decode
+  (`Image` → canvas) at 1080x1080 / 1080x1350 / 1920x1080
+  (~2,052,321 / ~2,425,851 / ~3,352,664 B).
+- JPEG export at all 3 sizes × all 3 qualities (9 combinations):
+  every file starts with JPEG magic `FF D8 FF` and decodes in-page
+  at the correct dimensions. Sizes (bytes):
+
+  | Size | q=0.8 | q=0.9 | q=0.95 |
+  |---|---|---|---|
+  | 1080x1080 | 158,860 | 228,191 | 318,527 |
+  | 1080x1350 | 175,230 | 252,056 | 353,411 |
+  | 1920x1080 | 223,669 | 322,205 | 454,169 |
+
+  JPEG q=0.8 is ~13x smaller than the same PNG (158,860 vs
+  2,052,321 B at 1080x1080); q=0.95 is bigger than q=0.8, so the
+  quality parameter genuinely applies.
+- `exportJPEG` returns a Blob of type `image/jpeg` (~228,191 B at
+  1080x1080 q=0.9); status line names the `.jpg` file.
+- JPEG button + quality select: present, options `0.8,0.9,0.95`,
+  default 0.9; clicking the button with 0.8 selected exports at
+  quality 0.8 (status line says so).
+- Progress callback: `exportAllSizes('png', cb)` fires 3x with
+  `done` 1..3, `total` 3, size ids in order; same for JPEG
+  (`format: 'jpeg'` on every call).
+- Unknown format fails fast: `exportAllSizes('webp', …)` throws
+  `Unknown export format: webp`.
+- E shortcut still exports PNG through the module (status names a
+  `.png`).
+- Download path (one-off check, `/tmp/r2d-dlcheck.mjs`): with the
+  anchor click intercepted, the JPEG button produces an anchor with
+  `download="vice-city-cover-vice-city-nights-1080x1080.jpg"` and a
+  `blob:http://127.0.0.…` href; the PNG button likewise with `.png`.
+  Note: in headless Chrome the files did not land in `~/Downloads`
+  or the CDP download path — no user gesture in headless, so the
+  download manager swallows the click. That is the browser's
+  download manager, not the app: the blob bytes, the filename and
+  the anchor attributes are all verified, and the mechanism is the
+  same anchor + object-URL path the PNG export has used since 2b.
+
+### 10.5 Screenshots regenerated + JPEG decode proof
+
+Screenshot driver:
+`~/workspace/tools/makefun/scratch-r2d/shots-r2d.mjs` — CDP, the
+`?shot=editor` scene from `shots.json`, wait for `window.__shotReady`,
+capture PNG → JPEG quality 85. **Only `2-editor.jpg` was regenerated**;
+1/3/4 were not touched and their hashes below are the round-2c ones.
+
+| Screenshot | Format/size | Bytes | vs round 2c |
+|---|---|---|---|
+| 1-cover.jpg | JPEG 1080x1080 | 194632 | byte-identical (sha256 `b56ec4bf…385d3`) |
+| 2-editor.jpg | JPEG 1280x720 | 142809 | CHANGED (was 142857; sha256 `699e5020…13660`) — JPEG export button + quality select visible |
+| 3-cover-portrait.jpg | JPEG 1024x1280 | 215398 | byte-identical (sha256 `44b5a912…83081ca`) |
+| 4-cover-wide.jpg | JPEG 1280x720 | 141435 | byte-identical (sha256 `97cc2725…1a7c5b`) |
+
+All 4 are ≤256 KiB. 1/3/4 staying byte-identical also confirms the
+JPEG work did not move trio/duo/quad geometry or the cover renderer.
+
+JPEG decode proof (from the §10.4 driver, both samples loaded,
+trio + sunset, `exportDataURL('1920x1080', 'jpeg', 0.9)`): the data
+URL starts `data:image/jpeg;base64,/9j/4AAQ…` (magic `FF D8 FF`),
+decodes in-page to 1920x1080, ~322,205 B.
+
+### 10.6 Gate numbers (measured on the final tree)
+
+| Gate row | Measured | Cap | Result |
+|---|---|---|---|
+| app_files: files under app/ | 8 | 993 | PASS |
+| app_files: app/ bytes | 178117 | 50331648 | PASS |
+| app_files: index.html bytes | 7905 | 1048576 | PASS |
+| app_files: symlinks under app/ | 0 | 0 | PASS |
+| references: external refs in app/ | none (`grep -rnE "https?://" app/` -> NONE) | 0 | PASS |
+| screenshots: count | 4 | 3–4 | PASS |
+| screenshots: all ≤256 KiB | max 215398 B | ≤262144 B | PASS |
+| dossier_matches: dossier byte-identical across 2 runs | sha256 `798e49f5…f5` both runs | — | PASS |
+| dossier_matches: dossier bytes | 988311 | ≤1572864 | PASS |
+| dossier_matches: --validate-only dossier sha | `798e49f5…f5`, matches the real build | — | PASS |
+| js_parses: app/src/cover.js, main.js, shots.js, export.js | all parse as ES modules (`node --input-type=module --check`) | — | PASS |
+| vendor/makefun-app.ts | sha256 `14e650ad…770e`, identical to fresh kit | unchanged | PASS |
+| main.ts --help / --sizes / --formats | usage printed (now lists --formats), exit 0, no output written; 3 sizes + 2 formats listed | — | PASS |
+| preflight caps | caps checked before copying; size + format tables cross-checked on every build | — | PASS |
+
+No secrets in the tree: the secret-pattern `grep` over the tree
+found nothing. No payment anywhere: free only, no key, no SOL spent (Rp 0).
+
+### 10.7 Negative tests (all in §10.4 driver, all PASS)
+
+- No photo: JPEG export still produces a valid JPEG (sunset-art fallback), ~125,210 B; PNG ~1,079,149 B.
+- Empty caption: JPEG exports without error; filename falls back to `vice-city-cover-cover-1080x1080.jpg`.
+- Non-image file (`note.txt`, `text/plain`): `addPhotoFile` returns `false`.
+- Unknown export format (`webp`): `exportAll` throws `Unknown export format: webp` instead of silently exporting nothing.

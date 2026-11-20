@@ -20,7 +20,7 @@ agent for make.fun's "Make GTA 6 Cover Art" bounty.
 - **Caption, your way:** a bold condensed uppercase title with outline + neon glow, plus a tagline strip — both edit live as you type. Two new sliders shape the title itself: **title size** (0.70×–1.30×) and **letter spacing** (−2 to +12 px), with a one-click reset. Both are baked into the exported PNG, not just the preview.
 - **Colour grades:** Vice Sunset, Neon Night, Pastel Vice, and Midnight Drive — gradient skies, a striped retro sun and palm silhouettes, all drawn in canvas code. Vignette, grain and scanlines are optional, and **Shuffle look** randomises layout, grade, panel treatments, and the caption size/spacing in one click.
 - **Keyboard shortcuts:** keys **1–6** pick a layout in order, **G** cycles the colour grade, **E** exports the current size. (Shortcuts pause while you type in a text field.)
-- **Export PNG:** 1080×1080, 1080×1350, 1920×1080 — one button per size, or **Export all three sizes** at once.
+- **Export PNG or JPEG:** 1080×1080, 1080×1350, 1920×1080 — one button per size, or **Export all three sizes** at once. **Export JPEG** saves the current size as a `.jpg` at the quality you pick (0.8 smaller file, 0.9 balanced, 0.95 near lossless); JPEG has no transparency, so the export is painted on a white background first, while PNG keeps its alpha channel. Filenames come from your caption (`vice-city-cover-<caption>-<size>.png/.jpg`), sanitised and falling back to `cover` for an empty caption.
 
 All art is drawn in code (canvas gradients, sun, palms, lettering). No Rockstar logo, official artwork or font is used anywhere.
 
@@ -39,7 +39,7 @@ Static files only — no build step, no network, no CDN. Open `app/index.html` f
 
 ## How it is handed in
 
-`main.ts` (Node 22, stdlib only) checks the dossier caps first, then copies `app/` + `screenshots/` to `MAKEFUN_OUTPUT_DIR` (or `/output`), writes `dossier.json` with the vendored `vendor/makefun-app.ts`, and prints a short build summary. `node main.ts --help` shows usage; `node main.ts --validate-only` proves the entry builds (caps + dossier) without writing to the output directory; `node main.ts --sizes` lists the export sizes. `TEST-REPORT.md` records the full test evidence for this round.
+`main.ts` (Node 22, stdlib only) checks the dossier caps first, then copies `app/` + `screenshots/` to `MAKEFUN_OUTPUT_DIR` (or `/output`), writes `dossier.json` with the vendored `vendor/makefun-app.ts`, and prints a short build summary. `node main.ts --help` shows usage; `node main.ts --validate-only` proves the entry builds (caps + dossier) without writing to the output directory; `node main.ts --sizes` lists the export sizes; `node main.ts --formats` lists the export formats (png, jpeg) and JPEG qualities, cross-checked against `app/src/export.js`. `TEST-REPORT.md` records the full test evidence for this round.
 
 ## License
 

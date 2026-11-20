@@ -2,7 +2,8 @@
    System fonts only; all colour comes from the grade palettes in
    src/cover.js, this file only dresses the editor chrome.
    New in 2c: caption-control sliders, the Banner button row, and
-   keyboard-shortcut hints (kbd chips + .shortcut-hints). */
+   keyboard-shortcut hints (kbd chips + .shortcut-hints).
+   New in 2d: JPEG export row (button + quality select). */
 * { box-sizing: border-box; }
 
 html, body {
@@ -178,6 +179,20 @@ button#shuffleBtn:hover { background: #4a2d73; }
 .export-row button:hover { background: #ffe45c; }
 .export-row button#exportAll { background: #ff2e88; border-color: #ff2e88; color: #fff; }
 .export-row button#exportAll:hover { background: #ff4d9d; }
+
+/* ---- JPEG export (2d) ---- */
+.jpeg-row { margin-top: 8px; }
+.jpeg-row button#exportJPEG { background: #2c1a4d; border-color: #ffd319; color: #ffd319; }
+.jpeg-row button#exportJPEG:hover { background: #3a2363; }
+.quality-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #d9c8f5;
+}
+.quality-label select { width: 100%; }
 
 #status { margin: 0; min-height: 20px; color: #ffd319; font-weight: 600; }
 

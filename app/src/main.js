@@ -22,6 +22,7 @@
 // a select, so typing a caption never triggers a layout switch.
 
 import { CAPTION, FILTERS, GRADES, LAYOUTS, SIZES, clampTitleSize, clampTitleTracking, drawCoverArt, layoutPanels } from './cover.js';
+import { createExporter } from './export.js';
 import { runShot } from './shots.js';
 
 // ---- element handles (queried once, up front) ----
@@ -376,9 +377,14 @@ function bindControls() {
   document.body.addEventListener('dragover', (e) => e.preventDefault());
   document.body.addEventListener('drop', handleDrop);
 
-  // Export buttons.
+  // Export buttons (2d): PNG per size, JPEG at the chosen quality,
+  // and "all sizes" — all routed through the export module.
   document.querySelectorAll('[data-export]').forEach((btn) => {
     btn.addEventListener('click', () => exportPNG(btn.dataset.export));
+  });
+  $('exportJPEG')?.addEventListener('click', () => {
+    const quality = Number($('jpegQuality')?.value ?? 0.9);
+    exportJPEG(state.size, quality);
   });
   $('exportAll').addEventListener('click', () => exportAllSizes());
 }
@@ -396,7 +402,7 @@ function panelAt(clientX, clientY) {
   return { index: 0, px, py };
 }
 
-// ---- export ----
+// ---- export (2d: all download work lives in src/export.js) ----
 
 export function renderExport(sizeId) {
   const size = SIZES.find((s) => s.id === sizeId) || currentSize();
@@ -407,44 +413,32 @@ export function renderExport(sizeId) {
   return off;
 }
 
-export function exportPNG(sizeId) {
-  return new Promise((resolve) => {
-    const off = renderExport(sizeId);
-    const size = SIZES.find((s) => s.id === sizeId) || currentSize();
-    off.toBlob((blob) => {
-      if (!blob) { setStatus('Export failed — try again.'); resolve(null); return; }
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `vice-city-cover-${size.id}.png`;
-      a.click();
-      setStatus(`Saved vice-city-cover-${size.id}.png (${size.w} x ${size.h}). Photos never left this machine.`);
-      resolve(blob);
-    }, 'image/png');
-  });
-}
+// The exporter owns PNG/JPEG downloads, batch exports and filenames;
+// main.js only supplies the render (an off-screen canvas per size)
+// and the caption for the filename. The same instance backs the
+// buttons, the E shortcut and the window.__vc test hook.
+const exporter = createExporter({
+  render: renderExport,
+  getTitle: () => state.title,
+  setStatus,
+});
 
-export async function exportAllSizes() {
-  for (const size of SIZES) {
-    await exportPNG(size.id);
-    await new Promise((r) => setTimeout(r, 350));
-  }
-  setStatus('Saved all three sizes: 1080x1080, 1080x1350, 1920x1080.');
+export const exportPNG = exporter.exportPNG;
+export const exportJPEG = exporter.exportJPEG;
+export const exportDataURL = exporter.exportDataURL;
+
+export function exportAllSizes(format = 'png', onProgress = null, quality) {
+  return exporter.exportAll(SIZES, format, onProgress, quality);
 }
 
 export function exportBytes(sizeId) {
-  return new Promise((resolve) => {
-    renderExport(sizeId).toBlob((blob) => {
-      if (!blob) { resolve(null); return; }
-      const reader = new FileReader();
-      reader.onload = () => resolve({ size: blob.size, dataUrl: reader.result });
-      reader.readAsDataURL(blob);
-    }, 'image/png');
-  });
+  return exportDataURL(sizeId, 'png');
 }
 
 // test hook: lets automated checks drive the app without a mouse
 window.__vc = {
-  state, loadSample, addPhotoFile, exportBytes, exportPNG, exportAllSizes,
+  state, loadSample, addPhotoFile, exportBytes, exportPNG, exportJPEG,
+  exportAllSizes, exportDataURL,
   shuffleLook, cycleGrade, handleShortcut, LAYOUT_ORDER, GRADE_ORDER,
   redraw: render, render, applyState, currentSize,
   get selectedPanel() { return selectedPanel; },

@@ -143,6 +143,17 @@
       <button id="exportWide" type="button" data-export="1920x1080">Export PNG 1920 x 1080</button>
       <button id="exportAll" type="button">Export all three sizes</button>
     </div>
+    <div class="export-row jpeg-row">
+      <button id="exportJPEG" type="button">Export JPEG (current size)</button>
+      <label class="quality-label">JPEG quality
+        <select id="jpegQuality">
+          <option value="0.8">0.8 — smaller file</option>
+          <option value="0.9" selected>0.9 — balanced</option>
+          <option value="0.95">0.95 — near lossless</option>
+        </select>
+      </label>
+    </div>
+    <p class="hint">JPEG exports are painted on a white background (JPEG has no transparency) at the quality you pick; PNG keeps its alpha channel. Both use the current size — pick a size above first.</p>
     <p class="shortcut-hints">Shortcuts: <kbd>1</kbd>–<kbd>6</kbd> layouts · <kbd>G</kbd> next grade · <kbd>E</kbd> export current size</p>
     <p id="status" role="status">Load a photo to start — or try a sample.</p>
     <p class="fine">Original art drawn in code. No Rockstar logo, artwork or font.</p>
